@@ -17,8 +17,8 @@ export async function middleware(request: NextRequest) {
 
     // If user is not authenticated and trying to access protected pages, redirect to sign-in
     if (!token && (
-        url.pathname.startsWith('/dashboard') ||
-        url.pathname.startsWith('/verify')
+        url.pathname.startsWith('/dashboard') 
+        // || url.pathname.startsWith('/verify')
     )) {
         return NextResponse.redirect(new URL('/sign-in', request.url))
     }

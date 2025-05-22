@@ -13,8 +13,9 @@ export const sendVerificationEmail = async (
         const emailContent = VerificationEmail({ username, otp });
 
         const response = await resend.emails.send({
-            from: 'From Name <from@email.com>',
-            to: email,
+            from: 'Mystery Message <onboarding@resend.dev>',
+            to: "nexeki6184@mowline.com",               // since using test email
+            // to: email,               // correct way to send email
             subject: 'Verification Email',
             react: VerificationEmail({ username, otp }), 
         });
