@@ -3,15 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { signInSchema } from "@/schemas/signInSchema";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,63 +18,51 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { verifySchema } from "@/schemas/verifySchema";
+import axios from "axios";
+import { AxiosError } from "axios";
+import { ApiResponse } from "@/types/ApiResponse";
 
-const page = () => {
+const page = ({ params }: { params: { username: string } }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
 
-  const form = useForm<z.infer<typeof signInSchema>>({
-    resolver: zodResolver(signInSchema),
+  // Decode the username from URL
+  const decodedUsername = decodeURIComponent(params.username);
+
+  // zod implementation
+  const form = useForm<z.infer<typeof verifySchema>>({
+    resolver: zodResolver(verifySchema),
     defaultValues: {
-      identifier: "",
-      password: "",
+      identifier: decodedUsername,
+      otp: "",
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof signInSchema>) => {
+  const onSubmit = async (data: z.infer<typeof verifySchema>) => {
     setIsSubmitting(true);
     try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        identifier: data.identifier,
-        password: data.password,
+      const response = await axios.post("/api/verify-code", {
+        identifier: decodedUsername,
+        otp: data.otp
       });
-
-      if (result?.error) {
-        toast({
-          title: "Login failed",
-          description: "Incorrect email/username or password",
-          variant: "destructive",
-        });
-      } else {
-        // Check if user is verified
-        const response = await fetch(`/api/check-verification?identifier=${data.identifier}`);
-        const verificationData = await response.json();
-        
-        if (!verificationData.isVerified) {
-          toast({
-            title: "Account not verified",
-            description: "Please verify your account first",
-            variant: "destructive",
-          });
-          router.push(`/verify/${data.identifier}`);
-        } else {
-          toast({
-            title: "Login successful",
-            description: "Redirecting to dashboard",
-            variant: "default",
-          });
-          router.replace("/dashboard");
-        }
-      }
-    } catch (error) {
+      
       toast({
-        title: "Login failed",
-        description: "An error occurred during login",
+        title: "Success",
+        description: "Account verified successfully",
+        variant: "default",
+      });
+      router.replace('/sign-in');
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiResponse<any>>;
+      toast({
+        title: "Verification failed",
+        description: axiosError.response?.data.message || "Error verifying account",
         variant: "destructive",
       });
+      console.error("Verification error:", axiosError.response?.data);
     } finally {
       setIsSubmitting(false);
     }
@@ -87,9 +73,11 @@ const page = () => {
       <div className="m-5 w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-2xl">
         <div className="text-center">
           <h1 className="text-4-xl font-extrabold tracking-tight lg:text-5xl mb-6">
-            Welcome Back
+            Verify Your Account
           </h1>
-          <p className="mb-4">Sign in to continue your journey</p>
+          <p className="mb-4">
+            Enter the OTP sent to your email to verify your account.
+          </p>
         </div>
 
         <Form {...form}>
@@ -101,21 +89,20 @@ const page = () => {
                 <FormItem>
                   <FormLabel>Email/Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="Email/Username" {...field} />
+                    <Input placeholder="Email/Username" {...field} disabled />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
-              name="password"
+              name="otp"
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>OTP</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Password" {...field} />
+                    <Input placeholder="Enter OTP" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -126,23 +113,14 @@ const page = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait...
+                  Verifying...
                 </>
               ) : (
-                "Sign In"
+                "Verify Account"
               )}
             </Button>
           </form>
         </Form>
-
-        <div className="text-center mt-4">
-          <p>
-            Don't have an account?{" "}
-            <Link href="/sign-up" className="text-blue-600 hover:underline">
-              Sign Up
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );

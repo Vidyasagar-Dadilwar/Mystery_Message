@@ -1,5 +1,6 @@
-import {z} from 'zod';
+import * as z from "zod";
 
 export const verifySchema = z.object({
-    code: z.string().min(6, {message: 'Verification code must be 6 characters long'}),
+    identifier: z.string().min(1, "Username/Email is required"),
+    otp: z.string().min(6, "OTP must be 6 digits").max(6, "OTP must be 6 digits"),
 })
